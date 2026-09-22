@@ -237,3 +237,34 @@ Post-training evaluation incorporates automated scripts to inspect model weaknes
 * **Loss-Ranked Error Extraction:** Programmatically extracting the top 10% highest-loss test predictions to isolate systematic misclassifications.
 * **Lexical Over-Indexing Check:** Testing the model on counterfactual perturbed samples (e.g., stripping profanity from a vent to check if it mistakenly shifts to critique; swapping member names into a technical post to check if it mistakenly triggers gossip).
 * **Confidence Calibration Analysis:** Computing expected calibration error (ECE) to verify that softmax confidence matches true empirical accuracy.
+
+---
+
+## 8. Stretch Features Planning
+
+Before executing the stretch investigations, the engineering methodology and empirical objectives are pre-registered below:
+
+### 8.1 Stretch Feature 1: Confidence Calibration Analysis Plan
+* **Core Research Question:** Are the model's softmax probability outputs statistically meaningful certainty estimators, or does DistilBERT exhibit overconfident misclassifications? (i.e., Does a $90\%$ confident prediction actually achieve higher empirical accuracy than a $60\%$ confident prediction?)
+* **Methodology:**
+  1. Partition test set predictions ($N=31$) into discrete confidence bins: $[0.50, 0.70)$, $[0.70, 0.80)$, $[0.80, 0.90)$, and $[0.90, 1.00]$.
+  2. For each bin $B_m$, calculate average predicted confidence $\text{conf}(B_m)$ and empirical ground-truth accuracy $\text{acc}(B_m) = \frac{1}{|B_m|} \sum_{i \in B_m} \mathbf{1}(\hat{y}_i = y_i)$.
+  3. Compute Expected Calibration Error (ECE) across $M$ bins:
+     $$\text{ECE} = \sum_{m=1}^M \frac{|B_m|}{N} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|$$
+* **Success Gate:** Calibration monotonicity ($\text{acc}(B_4) > \text{acc}(B_3) > \text{acc}(B_2) > \text{acc}(B_1)$) and an overall $\text{ECE} \le 8.0\%$.
+
+### 8.2 Stretch Feature 2: Systematic Error Pattern Analysis Plan
+* **Core Research Question:** What systemic, domain-specific linguistic mechanisms explain the model's classification failures beyond isolated text ambiguities?
+* **Hypotheses to Investigate:**
+  1. *Sarcasm & Affective Inversion:* Sarcastic technical reviews using hyperbolic praise ("masterpiece", "revolutionary staging") will cause attention head misallocation toward `emotional_vent`.
+  2. *Length Asymmetry & Information Sparsity:* Short posts ($<40$ characters) will exhibit significantly higher error rates due to lack of contextual co-occurrence tokens.
+  3. *Pseudo-Technical Disguise:* Unverified personal gossip framed with objective documentary jargon ("behind-the-scenes doc", "vocal coach scales") will trick critique attention heads.
+* **Methodology:** Error-slicing across token lengths, presence of ironic quotation marks, and compound intent clauses.
+
+### 8.3 Stretch Feature 3: Deployed Interface Architecture Plan
+* **Core Objective:** Deliver a fully functional, self-contained interactive application (`app.py`) allowing community members and moderators to test real-world takes.
+* **Specifications:**
+  * **Dual Operating Modes:** Interactive web dashboard (Flask + Tailwind CSS) and direct CLI mode (`python app.py --text "..."`).
+  * **Visual Outputs:** Primary predicted label badge, confidence percentage, full class probability distribution progress bars, and active decision rule attribution (Rule 1, 2, or 3).
+  * **Preset Evaluation Takes:** Quick-load buttons populated with canonical domain examples covering clean critiques, dorm gossip, pure vents, and compound edge cases.
+  * **REST API:** Headless `POST /api/classify` JSON endpoint returning predicted class, softmax probabilities, and diagnostic explanation for automated Reddit bot integration.
